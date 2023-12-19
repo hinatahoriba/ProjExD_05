@@ -10,6 +10,12 @@ WIDTH = 1600  # ゲームウィンドウの幅
 HEIGHT = 900  # ゲームウィンドウの高さ
 MAIN_DIR = os.path.split(os.path.abspath(__file__))[0]
 
+
+class Koukaton:
+    def __init__(self):
+        self.hp = 100
+        self.speed = 1.0
+
 def main():
     pg.display.set_caption("大戦争スマッシュこうかとんファイターズ")
     screen = pg.display.set_mode((WIDTH, HEIGHT))
