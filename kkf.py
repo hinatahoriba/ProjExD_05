@@ -15,6 +15,16 @@ class Koukaton:
     def __init__(self):
         self.hp = 100
         self.speed = 1.0
+        
+    def setHp(self, hp):
+        self.hp = hp
+    def getHp(self):
+        return self.hp
+    
+    def setSpeed(self, speed):
+        self.speed = speed
+    def getSpeed(self):
+        return self.speed
 
 def main():
     pg.display.set_caption("大戦争スマッシュこうかとんファイターズ")
