@@ -75,6 +75,8 @@ def main():
     vict_condition = start(koukaton)
     hyper_font = pg.font.Font(None, 50)  # 残り時間用のフォント
     hyper_color = (0, 0, 255)  # 残り時間の表示色
+    fonto = pg.font.Font(None, 200)  # ゲームオーバーの文字を生成
+    txt = fonto.render("Game Over", True, (255, 0, 0))
 
     while True:
         for event in pg.event.get():
@@ -88,7 +90,7 @@ def main():
         tmr += 1
         clock.tick(50)
 
-        dt = 10 - tmr/50 # ゲームの経過時間を計算
+        dt = 15 - tmr/50 # ゲームの経過時間を計算
 
         for event in pg.event.get():
             if event.type == pg.QUIT:
@@ -106,10 +108,11 @@ def main():
             hyper_pos = (WIDTH - hyper_text.get_width() - 10, HEIGHT - hyper_text.get_height() - 10)
             screen.blit(hyper_text, hyper_pos)  # 残り時間を表示
         elif dt <= 0:
-            dt += 10
-            hyper_text = hyper_font.render(f"stand-by Time : {int(dt)}", True, hyper_color)
-            hyper_pos = (WIDTH - hyper_text.get_width() - 10, HEIGHT - hyper_text.get_height() - 10)
-            screen.blit(hyper_text, hyper_pos)  # 残り時間を表示
+            txt_rect = txt.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+            screen.blit(txt, txt_rect)  # Game Overを画面中央に表示
+            pg.display.update()
+            pg.time.delay(2000)
+            return
             
             
         
