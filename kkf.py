@@ -86,11 +86,11 @@ def main():
         screen.blit(bg_img, [0, 0])
         #メイン処理
 
-        # pg.display.update()
+        
         tmr += 1
         clock.tick(50)
 
-        dt = 15 - tmr/50 # ゲームの経過時間を計算
+        dt = 20 - tmr/50 # ゲームの経過時間を計算
 
         for event in pg.event.get():
             if event.type == pg.QUIT:
