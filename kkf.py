@@ -20,7 +20,7 @@ def check_bound(obj: pg.Rect) -> tuple[bool, bool]:
     yoko, tate = True, True
     if obj.left < 0 or WIDTH < obj.right:  # 横方向のはみ出し判定
         yoko = False
-    if obj.top < 0 or 500+obj.height/2 < obj.bottom:  # 縦方向のはみ出し判定
+    if obj.top < 0 or 500+obj.height/2 < obj.bottom:  # 縦方向のはみ出し判定　地面を元いる位置に設定
         tate = False
     return yoko, tate
 
@@ -58,7 +58,7 @@ class Koukaton:
             (0, -1): img0,  # ジャンプ
 
         }
-        if self.player == 1:
+        if self.player == 1:  # プレイヤーによって画像の向きを設定
             self.dire = (+1, 0)
         else:
             self.dire = (-1, 0)
@@ -83,13 +83,13 @@ class Koukaton:
         引数2 screen：画面Surface
         """
         sum_mv = [0, 0]
-        if self.player == 1:
+        if self.player == 1:  # 1p(右)側の移動処理
             for k, mv in __class__.delta1.items():
                 if key_lst[k]:
                     self.rect.move_ip(+self.speed*mv[0], +self.speed*mv[1])
                     sum_mv[0] += mv[0]
                     sum_mv[1] += mv[1]
-        else:
+        else:  # 2p(左)側の移動処理
             for k, mv in __class__.delta2.items():
                 if key_lst[k]:
                     self.rect.move_ip(+self.speed*mv[0], +self.speed*mv[1])
@@ -97,7 +97,7 @@ class Koukaton:
                     sum_mv[1] += mv[1]
 
 
-        if check_bound(self.rect) != (True, True):
+        if check_bound(self.rect) != (True, True):  #画面外に行かないように
             for k, mv in __class__.delta1.items():
                 if key_lst[k]:
                     self.rect.move_ip(-self.speed*mv[0], -self.speed*mv[1])
@@ -106,14 +106,14 @@ class Koukaton:
                     self.rect.move_ip(-self.speed*mv[0], -self.speed*mv[1])
 
 
-        if sum_mv != [0, 0]:
-            if not(sum_mv[0] and sum_mv[1]):
+        if sum_mv != [0, 0]:  # こうかとんが動いている時
+            if not(sum_mv[0] and sum_mv[1]):  # 両方数値が入っている時
                 self.dire = tuple(sum_mv)
                 self.image = self.imgs[self.dire]
-                x,y = self.rect.center
-                self.rect = self.image.get_rect()
+                x,y = self.rect.center  # 今のこうかとんのcenterを取得
+                self.rect = self.image.get_rect()  # こうかとんのrectを上書き
                 print(self.rect.bottom)
-                self.rect.center = (x, y)
+                self.rect.center = (x, y)  # こうかとんのcenterを上書き
         screen.blit(self.image, self.rect)
 
 
