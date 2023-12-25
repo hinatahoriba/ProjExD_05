@@ -35,28 +35,32 @@ class Koukaton(pg.sprite.Sprite):
 class Status(pg.sprite.Sprite):
     """
     体力、必殺技のゲージ表示
-    引数: 体力バーのx座標
+    引数: 体力バーのx座標, 体力バーの減る方向
     """
-    def __init__(self, x):
+    def __init__(self, x, bar_type):
         super().__init__()
         self.x = x
         self.w, self.h = 700, 40
         self.barx, self.bary = 700, 40
+        self.bar_down = bar_type
         self.image = pg.Surface((self.w, self.h))
         self.image.set_colorkey((255, 255, 255))
-        self.sfc = pg.Surface((self.w, self.h))
         self.rect = pg.draw.rect(self.image, (0, 0, 0), (0, 0, self.w, self.h))
+        self.damage = pg.draw.rect(self.image, (255, 0, 0), (2, 2, self.w-4, self.h-4))
         self.bar = pg.draw.rect(self.image, (0, 255, 0), (2, 2, self.barx-4, self.bary-4))
         self.rect.center = (self.x, 20)
         self.bar.center = self.rect.center
+        self.damage.center = self.rect.center
 
     # hpバーの更新
     def update(self, hp):
         self.barx += hp
         self.rect = pg.draw.rect(self.image, (0, 0, 0), (0, 0, self.w, self.h))
-        self.bar = pg.draw.rect(self.image, (0, 255, 0), (2, 2, self.barx-4, self.bary-4))
+        self.damage = pg.draw.rect(self.image, (255, 0, 0), (2, 2, self.w-4, self.h-4))
+        self.bar = pg.draw.rect(self.image, (0, 255, 0), (2+(700-self.barx), 2, self.barx-4, self.bary-4))
         self.rect.center = (self.x, 20)
         self.bar.center = self.rect.center
+        self.damage.center = self.rect.center
 
 
 def main():
@@ -68,8 +72,8 @@ def main():
     clock = pg.time.Clock()
 
     statuses = pg.sprite.Group()
-    statuses.add(Status(350))
-    statuses.add(Status(WIDTH-350))
+    statuses.add(Status(350, 1))
+    statuses.add(Status(WIDTH-350, -1))
 
     while True:
         for event in pg.event.get():
