@@ -15,6 +15,7 @@ def draw_start_screen(screen, font, text, color):
         text_rect = text_render.get_rect(center=(WIDTH // 2, HEIGHT // 2))
         screen.blit(text_render, text_rect)
 
+
 def check_bound(obj: pg.Rect) -> tuple[bool, bool]:
     """
     オブジェクトが画面内か画面外かを判定し，真理値タプルを返す
@@ -53,7 +54,9 @@ class Koukaton(pg.sprite.Sprite):
         self.hyper_key_pressed_last_frame = False
         self.hp = 100
         self.speed = 1.0
-        self.damege = 0
+        self.damage = 0
+
+
         
     def setHp(self, hp):
         self.hp = hp
@@ -67,8 +70,10 @@ class Koukaton(pg.sprite.Sprite):
     def getSpeed(self):
         return self.speed
     
-    def update(self):
-        pass
+    def setDamage(self, damege):
+        self.damage = damege
+    def getDamage(self):
+        return self.damage
 
 class Status(pg.sprite.Sprite):
     """
@@ -206,6 +211,28 @@ class start:
             else:
                 self.reset_timer -= dt
 
+    def setDamage(self, damage: int):
+        self.damage = damage
+    def getDamage(self):
+        return self.damage
+    
+class Guard(pg.sprite.Sprite):
+    """
+    ガードに関するクラス
+    """
+    def __init__(self,):
+        super().__init__()
+        self.guard_hp = 5
+
+    def update(self, screen: pg.Surface,  koukaton: Koukaton):
+        if self.guard_hp <= 0:  #ガードが不可能な場合
+            koukaton.setSpeed(1.0)  #行動不可を解除
+        else:
+            if koukaton.getDamage() > 0:
+                koukaton.setDamage(0)  #ダメージの無効化
+                self.guard_hp -= 1  #ガード可能回数を減らす
+            koukaton.setSpeed(0.0)  #こうかとんを移動不可にする
+            pg.draw.circle(screen, (0, 255, 255), (500,500), 20 * self.guard_hp)  #ガード表示
 
 def main():
     pg.display.set_caption("大戦争スマッシュこうかとんファイターズ")
@@ -215,6 +242,7 @@ def main():
     attacks = pg.sprite.Group()
     tmr = 0
     clock = pg.time.Clock()
+    guard = Guard()
 
     statuses = pg.sprite.Group()
     statuses.add(Status(350, 1))
@@ -261,9 +289,26 @@ def main():
             
         screen.blit(bg_img, [0, 0])
         #メイン処理
+        screen.blit(bg_img, [0, 0])
         attacks.update()
         attacks.draw(screen)
         statuses.draw(screen)
+        #メイン処理
+        ###キーボード処理###
+        key_lst = pg.key.get_pressed()
+
+        #テスト用
+        if key_lst[pg.K_e]:
+            if tmr % 50 == 0:
+                koukaton.setDamage(100)
+        #テスト用終わり
+            
+        if key_lst[pg.K_q]:
+            guard.update(screen, koukaton)
+        else:
+            guard = Guard()
+
+        print(koukaton.getDamage())
         pg.display.update()
         
         tmr += 1
