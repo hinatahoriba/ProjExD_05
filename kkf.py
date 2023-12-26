@@ -38,7 +38,6 @@ class Koukaton:
         pg.K_j: (-1, 0),
         pg.K_l: (+1, 0),
     }
-
     def __init__(self, player:int, num: int, xy: tuple[int, int]):
         """
         こうかとん画像Surfaceを生成する
@@ -46,25 +45,33 @@ class Koukaton:
         引数2 xy：こうかとん画像の位置座標タプル
         """
         self.hp = 100
-        self.speed = 3.0
+        self.speed = 7.0
         self.player = player
+        self.base_center = 0
+        self.squat_flag = False
+        self.jamp_falg = False
+        self.vel = 0
         img0 = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/{num}.png"), 0, 4.0)
-        img1 = pg.transform.flip(img0, True, False)  # デフォルトのこうかとん
-        img2 = pg.transform.scale(img1, (img0.get_width(), img0.get_height()/2))
+        img1 = pg.transform.flip(img0, True, False)  # 右向きこうかとん
+        img2 = pg.transform.scale(img0, (img0.get_width(), img0.get_height()/2))
+        if self.player == 1:  # プレイヤーによって画像の向きを設定
+            self.dire = (+1, 0)
+            self.b_img = img2
+        else:
+            img2 = pg.transform.scale(img1, (img1.get_width(), img1.get_height()/2))
+            self.b_img = img2
+            self.dire = (-1, 0)
         self.imgs = {
             (+1, 0): img0,  # 右
             (-1, 0): img1,  # 左
             (0, +1): img2,  # しゃがみ
             (0, -1): img0,  # ジャンプ
-
         }
-        if self.player == 1:  # プレイヤーによって画像の向きを設定
-            self.dire = (+1, 0)
-        else:
-            self.dire = (-1, 0)
+        
         self.image = self.imgs[self.dire]
         self.rect = self.image.get_rect()
         self.rect.center = xy
+        self.base_center = self.rect.center
         
     def setHp(self, hp):
         self.hp = hp
@@ -82,6 +89,8 @@ class Koukaton:
         引数1 key_lst：押下キーの真理値リスト
         引数2 screen：画面Surface
         """
+        gravity = 1
+        v0 = 30
         sum_mv = [0, 0]
         if self.player == 1:  # 1p(右)側の移動処理
             for k, mv in __class__.delta1.items():
@@ -98,22 +107,36 @@ class Koukaton:
 
 
         if check_bound(self.rect) != (True, True):  #画面外に行かないように
-            for k, mv in __class__.delta1.items():
-                if key_lst[k]:
-                    self.rect.move_ip(-self.speed*mv[0], -self.speed*mv[1])
-            for k, mv in __class__.delta2.items():
-                if key_lst[k]:
-                    self.rect.move_ip(-self.speed*mv[0], -self.speed*mv[1])
+            if self.player == 1:
+                for k, mv in __class__.delta1.items():
+                    if key_lst[k]:
+                        self.rect.move_ip(-self.speed*mv[0], -self.speed*mv[1])
+            else:
+                for k, mv in __class__.delta2.items():
+                    if key_lst[k]:
+                        self.rect.move_ip(-self.speed*mv[0], -self.speed*mv[1])
 
-
-        if sum_mv != [0, 0]:  # こうかとんが動いている時
-            if not(sum_mv[0] and sum_mv[1]):  # 両方数値が入っている時
+    
+        if sum_mv != [0, 0]:  # こうかとんが動いた時
+            if not(sum_mv[0] and sum_mv[1]):  # 両方数値が入ってる時ではない時
                 self.dire = tuple(sum_mv)
-                self.image = self.imgs[self.dire]
-                x,y = self.rect.center  # 今のこうかとんのcenterを取得
-                self.rect = self.image.get_rect()  # こうかとんのrectを上書き
-                print(self.rect.bottom)
-                self.rect.center = (x, y)  # こうかとんのcenterを上書き
+                if self.image != self.imgs[self.dire]:
+                    self.image = self.imgs[self.dire]
+                    if sum_mv[1] == 1 and self.rect.centery == 500:  # しゃがんだ時
+                        x,y = self.rect.center  # 今のこうかとんのcenterを取得
+                        self.rect = self.image.get_rect()  # こうかとんのrectを上書き
+                        self.rect.center = (x, y+self.image.get_height()/2)  # こうかとんのcenterを上書き
+                        self.squat_flag = 1
+                    # if sum_mv[1] == -1 and self.rect.centery == 500:  # ジャンプしたとき
+                        # self.vel += (gravity * tmr)
+                        # self.rect.centery += self.vel * tmr + 0.5 * gravity * (tmr ** 2)
+                    if sum_mv[1] != 1 and self.squat_flag:  # 下方向以外の入力がされしゃがみ状態の時
+                        x,y = self.rect.center  # 今のこうかとんのcenterを取得
+                        self.rect = self.image.get_rect()  # こうかとんのrectを上書き
+                        self.rect.center = (x, y-self.image.get_height()/4)  # こうかとんのcenterを上書き
+                        self.squat_flag = 0
+                    
+        self.tmr += 1
         screen.blit(self.image, self.rect)
 
 
