@@ -25,38 +25,61 @@ def check_bound(obj: pg.Rect) -> tuple[bool, bool]:
     yoko, tate = True, True
     if obj.left < 0 or WIDTH < obj.right:  # 横方向のはみ出し判定
         yoko = False
-    if obj.top < 0 or HEIGHT < obj.bottom:  # 縦方向のはみ出し判定
+
+    if obj.top < 0 or 500+obj.height/2 < obj.bottom:  # 縦方向のはみ出し判定　地面を元いる位置に設定
         tate = False
     return yoko, tate
 
 
 class Koukaton(pg.sprite.Sprite):
-    """
-    ゲームキャラクター（こうかとん）に関するクラス
-    """
-    def __init__(self, num: int, xy: tuple[int, int]):
+    delta1 = {  # 1p側押下キーと移動量の辞書
+        pg.K_w: (0, -1),
+        pg.K_s: (0, +1),
+        pg.K_a: (-1, 0),
+        pg.K_d: (+1, 0),
+    }
+    delta2 = {  # 2p側押下キーと移動量の辞書
+        pg.K_i: (0, -1),
+        pg.K_k: (0, +1),
+        pg.K_j: (-1, 0),
+        pg.K_l: (+1, 0),
+    }
+    def __init__(self, player:int, num: int, xy: tuple[int, int]):
         """
         こうかとん画像Surfaceを生成する
         引数1 num：こうかとん画像ファイル名の番号
         引数2 xy：こうかとん画像の位置座標タプル
         """
         super().__init__()
-        img0 = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/{num}.png"), 0, 2.0)
-        img = pg.transform.flip(img0, True, False)  # デフォルトのこうかとん
+        self.hp = 100
+        self.speed = 7.0
+        self.damage = 10
+        self.player = player
+        self.base_center = 0
+        self.squat_flag = False
+        self.jamp_falg = False
+        self.vel = 0
+        img0 = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/{num}.png"), 0, 4.0)
+        img1 = pg.transform.flip(img0, True, False)  # 右向きこうかとん
+        img2 = pg.transform.scale(img0, (img0.get_width(), img0.get_height()/2))
+        if self.player == 1:  # プレイヤーによって画像の向きを設定
+            self.dire = (+1, 0)
+            self.b_img = img2
+        else:
+            img2 = pg.transform.scale(img1, (img1.get_width(), img1.get_height()/2))
+            self.b_img = img2
+            self.dire = (-1, 0)
         self.imgs = {
-            (+1, 0): img,  # 右
-            (-1, 0): img0,  # 左
+            (+1, 0): img0,  # 右
+            (-1, 0): img1,  # 左
+            (0, +1): img2,  # しゃがみ
+            (0, -1): img0,  # ジャンプ
         }
-        self.dire = (+1, 0)
+        
         self.image = self.imgs[self.dire]
         self.rect = self.image.get_rect()
         self.rect.center = xy
-        self.hyper_key_pressed_last_frame = False
-        self.hp = 100
-        self.speed = 1.0
-        self.damage = 0
-
-
+        self.base_center = self.rect.center
         
     def setHp(self, hp):
         self.hp = hp
@@ -74,6 +97,60 @@ class Koukaton(pg.sprite.Sprite):
         self.damage = damege
     def getDamage(self):
         return self.damage
+    def update(self, key_lst: list[bool], screen: pg.Surface):
+        """
+        押下キーに応じてこうかとんを移動させる
+        引数1 key_lst：押下キーの真理値リスト
+        引数2 screen：画面Surface
+        """
+        gravity = 1
+        v0 = 30
+        sum_mv = [0, 0]
+        if self.player == 1:  # 1p(右)側の移動処理
+            for k, mv in __class__.delta1.items():
+                if key_lst[k]:
+                    self.rect.move_ip(+self.speed*mv[0], +self.speed*mv[1])
+                    sum_mv[0] += mv[0]
+                    sum_mv[1] += mv[1]
+        else:  # 2p(左)側の移動処理
+            for k, mv in __class__.delta2.items():
+                if key_lst[k]:
+                    self.rect.move_ip(+self.speed*mv[0], +self.speed*mv[1])
+                    sum_mv[0] += mv[0]
+                    sum_mv[1] += mv[1]
+
+
+        if check_bound(self.rect) != (True, True):  #画面外に行かないように
+            if self.player == 1:
+                for k, mv in __class__.delta1.items():
+                    if key_lst[k]:
+                        self.rect.move_ip(-self.speed*mv[0], -self.speed*mv[1])
+            else:
+                for k, mv in __class__.delta2.items():
+                    if key_lst[k]:
+                        self.rect.move_ip(-self.speed*mv[0], -self.speed*mv[1])
+
+    
+        if sum_mv != [0, 0]:  # こうかとんが動いた時
+            if not(sum_mv[0] and sum_mv[1]):  # 両方数値が入ってる時ではない時
+                self.dire = tuple(sum_mv)
+                if self.image != self.imgs[self.dire]:
+                    self.image = self.imgs[self.dire]
+                    if sum_mv[1] == 1 and self.rect.centery == 500:  # しゃがんだ時
+                        x,y = self.rect.center  # 今のこうかとんのcenterを取得
+                        self.rect = self.image.get_rect()  # こうかとんのrectを上書き
+                        self.rect.center = (x, y+self.image.get_height()/2)  # こうかとんのcenterを上書き
+                        self.squat_flag = 1
+                    # if sum_mv[1] == -1 and self.rect.centery == 500:  # ジャンプしたとき
+                        # self.vel += (gravity * tmr)
+                        # self.rect.centery += self.vel * tmr + 0.5 * gravity * (tmr ** 2)
+                    if sum_mv[1] != 1 and self.squat_flag:  # 下方向以外の入力がされしゃがみ状態の時
+                        x,y = self.rect.center  # 今のこうかとんのcenterを取得
+                        self.rect = self.image.get_rect()  # こうかとんのrectを上書き
+                        self.rect.center = (x, y-self.image.get_height()/4)  # こうかとんのcenterを上書き
+                        self.squat_flag = 0
+                    
+        screen.blit(self.image, self.rect)
 
 class Status(pg.sprite.Sprite):
     """
@@ -124,7 +201,7 @@ class Attack(pg.sprite.Sprite):  #追加機能
         self.rect.centery = Koukaton.rect.centery+Koukaton.rect.height*self.vy
         self.rect.centerx = Koukaton.rect.centerx+Koukaton.rect.width*self.vx #パンチの出る位置
         self.speed = 30 #パンチのスピード
-        self.punch_distance = Koukaton.rect.centerx + self.speed*self.vx*6  #パンチの飛距離
+        self.punch_distance = Koukaton.rect.centerx + self.speed*self.vx*10  #パンチの飛距離
 
     def update(self):
         """
@@ -135,6 +212,7 @@ class Attack(pg.sprite.Sprite):  #追加機能
         if check_bound(self.rect) != (True, True):
             self.kill()
         if  self.punch_distance < self.rect.centerx: #パンチの距離を超えると消滅する
+            print("hoge")
             self.kill()
             
 
@@ -233,13 +311,16 @@ class Guard(pg.sprite.Sprite):
                 self.guard_hp -= 1  #ガード可能回数を減らす
             koukaton.setSpeed(0.0)  #こうかとんを移動不可にする
             pg.draw.circle(screen, (0, 255, 255), (500,500), 20 * self.guard_hp)  #ガード表示
+    
 
 def main():
     pg.display.set_caption("大戦争スマッシュこうかとんファイターズ")
     screen = pg.display.set_mode((WIDTH, HEIGHT))
     bg_img = pg.image.load(f"{MAIN_DIR}/fig/pg_bg.jpg")
-    koukaton = Koukaton(3, (100, 400))
     attacks = pg.sprite.Group()
+    play_1 = Koukaton(1, 2, (300, 500))
+    play_2 = Koukaton(2, 2, (1300, 500))
+
     tmr = 0
     clock = pg.time.Clock()
     guard = Guard()
@@ -250,7 +331,7 @@ def main():
         
     pg.init()
     #koukaton = Koukaton() # クラスからオブジェクト生成
-    vict_condition = start(koukaton)
+    vict_condition = start(play_1)
     hyper_font = pg.font.Font(None, 50)  # 残り時間用のフォント
     hyper_color = (0, 0, 255)  # 残り時間の表示色
     fonto = pg.font.Font(None, 200)  # ゲームオーバーの文字を生成
@@ -260,6 +341,7 @@ def main():
     lnvalid_screen_color = (255, 0, 0)  # 赤色の文字)
     # スタート画面についての部分
     while True:
+        key_lst = pg.key.get_pressed()
         for event in pg.event.get():
             if event.type == pg.QUIT: return
         screen.blit(bg_img, [0, 0])
@@ -285,14 +367,11 @@ def main():
                 print("retrun")
                 statuses.update(-10)
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
-                attacks.add(Attack(koukaton))  #通常のビーム
+                attacks.add(Attack(play_1))  #通常のビーム
             
-        screen.blit(bg_img, [0, 0])
         #メイン処理
         screen.blit(bg_img, [0, 0])
-        attacks.update()
-        attacks.draw(screen)
-        statuses.draw(screen)
+        
         #メイン処理
         ###キーボード処理###
         key_lst = pg.key.get_pressed()
@@ -300,15 +379,20 @@ def main():
         #テスト用
         if key_lst[pg.K_e]:
             if tmr % 50 == 0:
-                koukaton.setDamage(100)
+                play_1.setDamage(100)
         #テスト用終わり
             
         if key_lst[pg.K_q]:
-            guard.update(screen, koukaton)
+            guard.update(screen, play_1)
         else:
             guard = Guard()
 
-        print(koukaton.getDamage())
+        print(play_1.getDamage())
+        play_1.update(key_lst, screen)
+        play_2.update(key_lst, screen)
+        attacks.update()
+        attacks.draw(screen)
+        statuses.draw(screen)
         pg.display.update()
         
         tmr += 1
@@ -329,7 +413,7 @@ def main():
             pg.display.update()
             pg.time.delay(2000)
             return
-        if koukaton.getHp() <= 0:
+        if play_1.getHp() <= 0:
             txt_rect = txt.get_rect(center=(WIDTH // 2, HEIGHT // 2))
             draw_start_screen(screen, start_screen_font, "Finish!!!", lnvalid_screen_color)  # Finissh!!!を画面中央に表示
             pg.display.update()
