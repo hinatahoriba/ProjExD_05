@@ -135,6 +135,43 @@ class start:
                 self.reset_timer -= dt
 
 
+
+class start:
+    """
+    勝利条件に関するクラス
+    """
+    def __init__(self, koukaton):
+        self.koukaton = koukaton
+        self.timer = 60  # 初期時間
+        self.reset_timer = 10  # リセットまでの時間について
+        self.round = 5  # ラウンド回数について
+        self.reset()
+
+    def reset(self):
+        """
+        勝利条件をリセットする
+        """
+        self.timer = 60
+        self.koukaton.hp = 100
+        self.allow_input = True
+        self.round -= 1
+        if self.round <= 0:
+            self.allow_input = False
+            
+    def update(self, dt):
+        """
+        勝利条件の更新
+        """
+        # 設定した時間かこうかとんのhpが0になったときに勝利
+        self.timer == dt
+        if self.koukaton.hp <= 0:
+            self.allow_input = False
+            if self.reset_timer <= 0:
+                self.reset()
+            else:
+                self.reset_timer -= dt
+
+
 def main():
     pg.display.set_caption("大戦争スマッシュこうかとんファイターズ")
     screen = pg.display.set_mode((WIDTH, HEIGHT))
