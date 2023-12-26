@@ -157,7 +157,6 @@ def main():
 
         # 画面の描画
         pg.display.flip()
-             
 
 if __name__ == "__main__":
     pg.init()
