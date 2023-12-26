@@ -15,8 +15,42 @@ def draw_start_screen(screen, font, text, color):
         text_rect = text_render.get_rect(center=(WIDTH // 2, HEIGHT // 2))
         screen.blit(text_render, text_rect)
 
-class Koukaton:
-    def __init__(self):
+def check_bound(obj: pg.Rect) -> tuple[bool, bool]:
+    """
+    オブジェクトが画面内か画面外かを判定し，真理値タプルを返す
+    引数 obj：オブジェクト（爆弾，こうかとん，ビーム）SurfaceのRect
+    戻り値：横方向，縦方向のはみ出し判定結果（画面内：True／画面外：False）
+    """
+    yoko, tate = True, True
+    if obj.left < 0 or WIDTH < obj.right:  # 横方向のはみ出し判定
+        yoko = False
+    if obj.top < 0 or HEIGHT < obj.bottom:  # 縦方向のはみ出し判定
+        tate = False
+    return yoko, tate
+
+
+class Koukaton(pg.sprite.Sprite):
+    """
+    ゲームキャラクター（こうかとん）に関するクラス
+    """
+    def __init__(self, num: int, xy: tuple[int, int]):
+        """
+        こうかとん画像Surfaceを生成する
+        引数1 num：こうかとん画像ファイル名の番号
+        引数2 xy：こうかとん画像の位置座標タプル
+        """
+        super().__init__()
+        img0 = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/{num}.png"), 0, 2.0)
+        img = pg.transform.flip(img0, True, False)  # デフォルトのこうかとん
+        self.imgs = {
+            (+1, 0): img,  # 右
+            (-1, 0): img0,  # 左
+        }
+        self.dire = (+1, 0)
+        self.image = self.imgs[self.dire]
+        self.rect = self.image.get_rect()
+        self.rect.center = xy
+        self.hyper_key_pressed_last_frame = False
         self.hp = 100
         self.speed = 1.0
         
@@ -29,6 +63,40 @@ class Koukaton:
         self.speed = speed
     def getSpeed(self):
         return self.speed
+    
+    
+class Attack(pg.sprite.Sprite):  #追加機能
+    """
+    攻撃に関するクラス
+    """
+    def __init__(self, Koukaton: Koukaton):
+        """
+        パンチ画像Surfaceを生成する
+        引数 bird：パンチを放つこうかとん
+        """
+        super().__init__()
+        self.vx, self.vy = Koukaton.dire
+        angle = math.degrees(math.atan2(-self.vy, self.vx))
+        self.image = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/beam.png"), angle, 4.0)
+        self.vx = math.cos(math.radians(angle))
+        self.vy = -math.sin(math.radians(angle))
+        self.rect = self.image.get_rect()
+        self.rect.centery = Koukaton.rect.centery+Koukaton.rect.height*self.vy
+        self.rect.centerx = Koukaton.rect.centerx+Koukaton.rect.width*self.vx #パンチの出る位置
+        self.speed = 30 #パンチのスピード
+        self.punch_distance = Koukaton.rect.centerx + self.speed*self.vx*6  #パンチの飛距離
+
+    def update(self):
+        """
+        ビームを速度ベクトルself.vx, self.vyに基づき移動させる
+        引数 screen：画面Surface
+        """
+        self.rect.move_ip(+self.speed*self.vx, +self.speed*self.vy)
+        if check_bound(self.rect) != (True, True):
+            self.kill()
+        if  self.punch_distance < self.rect.centerx: #パンチの距離を超えると消滅する
+            self.kill()
+            
 
 
 class start:
@@ -71,11 +139,12 @@ def main():
     pg.display.set_caption("大戦争スマッシュこうかとんファイターズ")
     screen = pg.display.set_mode((WIDTH, HEIGHT))
     bg_img = pg.image.load(f"{MAIN_DIR}/fig/pg_bg.jpg")
-
+    koukaton = Koukaton(3, (100, 400))
+    attacks = pg.sprite.Group()
     tmr = 0
     clock = pg.time.Clock()
     pg.init()
-    koukaton = Koukaton() # クラスからオブジェクト生成
+    #koukaton = Koukaton() # クラスからオブジェクト生成
     vict_condition = start(koukaton)
     hyper_font = pg.font.Font(None, 50)  # 残り時間用のフォント
     hyper_color = (0, 0, 255)  # 残り時間の表示色
@@ -112,9 +181,14 @@ def main():
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 return
+            if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
+                attacks.add(Attack(koukaton))  #通常のビーム
 
         screen.blit(bg_img, [0, 0])
         #メイン処理
+        
+        attacks.update()
+        attacks.draw(screen)
 
         
         tmr += 1
@@ -130,10 +204,6 @@ def main():
 
         # キー入力の処理 HPが減るかの確認用
         keys = pg.key.get_pressed() # キーボードの状態をゲットする
-        if vict_condition.allow_input: # 勝利条件が満たされているか
-            if keys[pg.K_SPACE]: # スペースキーが押された場合hp減少
-                koukaton.setHp(koukaton.getHp() - 10)   
-                print(koukaton.getHp())
         
         if dt >= 0: # 時間が0になるまでの時間を右下に表示
             hyper_text = hyper_font.render(f"Time: {int(dt)}", True, hyper_color)
