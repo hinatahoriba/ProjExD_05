@@ -3,8 +3,8 @@ import os
 import random
 import sys
 import time
-from typing import Any
 import pygame as pg
+
 
 WIDTH = 1600  # ゲームウィンドウの幅
 HEIGHT = 900  # ゲームウィンドウの高さ
@@ -53,17 +53,52 @@ class Koukaton(pg.sprite.Sprite):
         self.hyper_key_pressed_last_frame = False
         self.hp = 100
         self.speed = 1.0
+        self.damege = 0
         
     def setHp(self, hp):
         self.hp = hp
+
     def getHp(self):
         return self.hp
     
     def setSpeed(self, speed):
         self.speed = speed
+
     def getSpeed(self):
         return self.speed
     
+    def update(self):
+        pass
+
+class Status(pg.sprite.Sprite):
+    """
+    体力、必殺技のゲージ表示
+    引数: 体力バーのx座標, 体力バーの減る方向
+    """
+    def __init__(self, x, bar_type):
+        super().__init__()
+        self.x = x
+        self.w, self.h = 700, 40
+        self.barx, self.bary = 700, 40
+        self.bar_down = bar_type
+        self.image = pg.Surface((self.w, self.h))
+        self.image.set_colorkey((255, 255, 255))
+        self.rect = pg.draw.rect(self.image, (0, 0, 0), (0, 0, self.w, self.h))
+        self.damage = pg.draw.rect(self.image, (255, 0, 0), (2, 2, self.w-4, self.h-4))
+        self.bar = pg.draw.rect(self.image, (0, 255, 0), (2, 2, self.barx-4, self.bary-4))
+        self.rect.center = (self.x, 20)
+        self.bar.center = self.rect.center
+        self.damage.center = self.rect.center
+
+    # hpバーの更新
+    def update(self, hp):
+        self.barx += hp
+        self.rect = pg.draw.rect(self.image, (0, 0, 0), (0, 0, self.w, self.h))
+        self.damage = pg.draw.rect(self.image, (255, 0, 0), (2, 2, self.w-4, self.h-4))
+        self.bar = pg.draw.rect(self.image, (0, 255, 0), (2+(700-self.barx), 2, self.barx-4, self.bary-4))
+        self.rect.center = (self.x, 20)
+        self.bar.center = self.rect.center
+        self.damage.center = self.rect.center
     
 class Attack(pg.sprite.Sprite):  #追加機能
     """
@@ -180,6 +215,11 @@ def main():
     attacks = pg.sprite.Group()
     tmr = 0
     clock = pg.time.Clock()
+
+    statuses = pg.sprite.Group()
+    statuses.add(Status(350, 1))
+    statuses.add(Status(WIDTH-350, -1))
+        
     pg.init()
     #koukaton = Koukaton() # クラスからオブジェクト生成
     vict_condition = start(koukaton)
@@ -190,13 +230,10 @@ def main():
     start_screen_font = pg.font.Font(None, 200)
     start_screen_color = (200, 50, 100)  # 紫色の文字
     lnvalid_screen_color = (255, 0, 0)  # 赤色の文字)
-    
     # スタート画面についての部分
     while True:
         for event in pg.event.get():
-            if event.type == pg.QUIT:
-                return
-
+            if event.type == pg.QUIT: return
         screen.blit(bg_img, [0, 0])
 
         keys = pg.key.get_pressed()
@@ -212,32 +249,27 @@ def main():
     tmr = 0
     clock.tick(50)
     # ここまでがスタート画面です。
-
     # メインコード部分
     while True:
         for event in pg.event.get():
-            if event.type == pg.QUIT:
-                return
+            if event.type == pg.QUIT: return
+            if event.type == pg.KEYDOWN and event.key == pg.K_RETURN:
+                print("retrun")
+                statuses.update(-10)
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                 attacks.add(Attack(koukaton))  #通常のビーム
-
+            
         screen.blit(bg_img, [0, 0])
         #メイン処理
-        
         attacks.update()
         attacks.draw(screen)
-
+        statuses.draw(screen)
+        pg.display.update()
         
         tmr += 1
         clock.tick(50)
 
         dt = 10 - tmr/50 # ゲームの経過時間を計算
-
-        for event in pg.event.get():
-            if event.type == pg.QUIT:
-                pg.quit()
-                sys.exit()
-
 
         # キー入力の処理 HPが減るかの確認用
         keys = pg.key.get_pressed() # キーボードの状態をゲットする
@@ -270,5 +302,3 @@ if __name__ == "__main__":
     main()
     pg.quit()
     sys.exit()
-
-    
